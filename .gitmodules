@@ -1,0 +1,3 @@
+[submodule "ff/ext/sdks"]
+	path = ff/ext/sdks
+	url = https://github.com/martinpaljak/oracle_javacard_sdks

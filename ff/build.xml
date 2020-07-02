@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." default="build" name="PTester">
+
+  <property name="SDK_PATH" value="ext/sdks"/>
+
+  <property name="JC212" value="${SDK_PATH}/jc212_kit"/>
+  <property name="JC221" value="${SDK_PATH}/jc221_kit"/>
+  <property name="JC222" value="${SDK_PATH}/jc222_kit"/>
+  <property name="JC303" value="${SDK_PATH}/jc303_kit"/>
+  <property name="JC304" value="${SDK_PATH}/jc304_kit"/>
+  <property name="JC305u1" value="${SDK_PATH}/jc305u1_kit"/>
+  <property name="JC305u2" value="${SDK_PATH}/jc305u2_kit"/>
+  <property name="JC305u3" value="${SDK_PATH}/jc305u3_kit"/>
+
+  <taskdef name="javacard" classname="pro.javacard.ant.JavaCard" classpath="ext/ant-javacard.jar"/>
+
+  <target name="init">
+    <mkdir dir="build"/>
+  </target>
+
+  <target name="compile" depends="init" description="Compiles the reader class.">
+    <javac srcdir="reader/src/" destdir="build"/>
+  </target>
+
+  <target name="build-dsa" depends="init" description="Build the DSA only version of the applet.">
+    <javacard jckit="${JC222}">
+      <cap output="build/applet_dsa.cap" sources="applet/src/cz/crcs/ptester" aid="2e2e50546573" excludes="**/PTesterFull.java">
+        <applet class="cz.crcs.ptester.PTesterDSA" aid="2e2e50546573746572445341"/>
+      </cap>
+    </javacard>
+  </target>
+
+  <target name="build-full" depends="init" description="Build the full version of the applet.">
+    <javacard jckit="${JC305u3}">
+      <cap output="build/applet_full.cap" sources="applet/src/cz/crcs/ptester" aid="2e2e50546573" excludes="**/PTesterDSA.java">
+        <applet class="cz.crcs.ptester.PTesterFull" aid="2e2e5054657374657246756c6c"/>
+      </cap>
+    </javacard>
+  </target>
+
+  <target name="build-reader" depends="compile" description="Build the reader app.">
+    <jar jarfile="build/reader.jar" basedir="build" includes="**/*.class">
+      <manifest>
+        <attribute name="Main-Class" value="cz.crcs.ptester.PTester"/>
+      </manifest>
+    </jar>
+    
+    <property name="store.dir" value="build"/>
+    <property name="store.jar" value="${store.dir}/reader-dist.jar"/>
+
+    <echo message="Packaging into a single JAR at ${store.jar}"/>
+
+    <tempfile property="temp.file" destDir="${java.io.tmpdir}" suffix=".jar"/>
+    <tempfile property="temp.previous_jar" destdir="${java.io.tmpdir}" suffix=".jar"/>
+
+    <copy file="${store.jar}" tofile="${temp.previous_jar}" failonerror="false"/>
+    <echo message="Backed up ${store.jar} into ${temp.previous_jar}"/>
+
+    <delete file="${store.jar}" failonerror="false"/>
+    <jar destfile="${temp.file}" filesetmanifest="skip" compress="true" level="8">
+        <zipgroupfileset dir="build" includes="reader.jar"/>
+        <zipgroupfileset dir="ext/" includes="picocli-3.9.5.jar"/>
+
+        <manifest>
+            <attribute name="Main-Class" value="cz.crcs.ptester.PTester"/>
+        </manifest>
+    </jar>
+
+    <zip destfile="${store.jar}" compress="true" level="8">
+        <zipfileset src="${temp.file}" excludes="META-INF/*.SF, META-INF/*.DSA, META-INF/*.RSA"/>
+    </zip>
+
+    <delete file="${temp.file}"/>
+    <delete file="${temp.previous_jar}"/>
+
+    <chmod file="build/reader.jar" perm="ugo+x"/>
+    <chmod file="build/reader-dist.jar" perm="ugo+x"/>
+  </target>
+
+  <target name="build" depends="compile" description="Builds the CAP file and reader.">
+    <antcall target="build-dsa"/>
+    <antcall target="build-full"/>
+	<antcall target="build-reader"/>
+  </target>
+
+  <target name="clean">
+    <delete dir="build"/>
+  </target>
+
+  <target name="help">
+  	<echo message="Available targets:"/>
+  	<echo message=" - build - Builds both versions of the applet and the reader."/>
+  	<echo message=" - build-dsa - Builds the DSA only version of the applet."/>
+  	<echo message=" - build-full - Builds the full version of the applet."/>
+  	<echo message=" - build-reader - Builds the reader app only."/>
+  	<echo message=" - clean - Cleans the project."/> 
+  </target>
+
+</project>
